@@ -18,12 +18,17 @@ struct Data { // digital values from each sensor
   uint16_t light_d = 0;
 } Current_reading_digi;
 
+Data data_arr[60]; //To hold data for 1 minute duration
+
+uint8_t data_arr_idx = 0;
+
 void setup() {
   Serial.begin(9600);
   lcd.begin(16, 2);
 
   Timer1.initialize(1000000); // call every 1 second(s)
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
+  ADC_init();
 
   Serial.println("setup complete");
 }
@@ -57,9 +62,71 @@ void main_menu() {
 }
 
 void timerOneISR() {
-  Serial.println(Current_reading_digi.water_level_d);
+  //Serial.println(Current_reading_digi.water_level_d);
+  ADC_read();
 }
 
 void printout_formatter() {
   /*WIP*/
 }
+
+void ADC_init(){
+  ADMUX |= (1 << REFS0); //To use internal reference voltage
+  ADCSRA |= (1 << ADEN); //To enable adc
+  ADCSRB = 0; //Status register B not needed
+
+  /* DIDR0 disable analog pin's digital components for pins A0-3
+     A4-5 used for I2C and A6-7 no digital components exist */
+  DIDR0 |= (1 << ADC0D) | (1 << ADC1D) | (1 << ADC2D) | (1 << ADC3D);
+  Serial.println("ADC initialization complete");
+}
+
+void ADC_read(){
+  /* Read every analog pin excluding A4 and A5
+     and store to data struct */
+  uint8_t pins[] = {0, 1, 2, 3, 6, 7};
+  for(int i = 0; i < (sizeof(pins)/sizeof(pins[0])); i++){
+    ADMUX = (ADMUX & B11111000) | (pins[i] & B00000111);
+    ADCSRA |= (1 << ADSC); //Start conversion
+    while(ADCSRA & B01000000); //Wait for conversion to end
+    switch(pins[i]){
+      case 0: //Top soil moisture
+        Current_reading_digi.soil_top_d = ADC;
+        break;
+      case 1: //Bottom soil moisture
+        Current_reading_digi.soil_bottom_d = ADC;
+        break;
+      case 2: //Air temperature
+        Current_reading_digi.temp_air_d = ADC;
+        break;
+      case 3: //Water temperature
+        Current_reading_digi.temp_water_d = ADC;
+        break;
+      case 6: //Water level
+        Current_reading_digi.water_level_d = ADC;
+        break;
+      case 7: //Light amount
+        Current_reading_digi.light_d = ADC;
+        break;
+      default:
+        break;
+    } 
+  }
+
+  /* Store the current data struct
+     to an array holding 60 data structs at a time
+     so save data for a minute */
+  data_arr[data_arr_idx] = Current_reading_digi;  
+  if(data_arr_idx == 59){
+    data_arr_idx = 0;
+  }else{
+    data_arr_idx++;
+  }
+}
+
+
+
+
+
+
+
