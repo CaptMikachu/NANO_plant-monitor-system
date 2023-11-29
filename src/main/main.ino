@@ -62,7 +62,9 @@ void main_menu() {
 
 void timerOneISR() {
   //Serial.println(Current_reading_digi.water_level_d);
+  SREG &= ~(1 << 7); //Disable interrupts by writing 0 to 7th bit in SREG
   ADC_read();
+  SREG |= (1 << 7); //Enable interrupts by writing 1 to 7th bit in SREG
 }
 
 void printout_formatter() {
