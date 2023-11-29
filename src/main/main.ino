@@ -1,7 +1,6 @@
 #include <Wire.h> // allows communication with I2C display
 #include "rgb_lcd.h" // for controlling LCD-display
 #include <math.h>
-#include <string.h>
 #include <TimerOne.h>
 
 #define LCD_COLUMNS 16
@@ -67,7 +66,18 @@ void timerOneISR() {
 }
 
 void printout_formatter() {
-  /*WIP*/
+  /*Printout for digital values*/
+  String digi_values_str =
+  "====DIGITAL SENSOR READING===="
+  "\nSoil moisture, top: " + String(Current_reading_digi.soil_top_d) +
+  "\nSoil moisture, bottom: " + String(Current_reading_digi.soil_bottom_d) +
+  "\nTemperature, air: " + String(Current_reading_digi.temp_air_d) +
+  "\nTemperature, water: " + String(Current_reading_digi.temp_water_d) +
+  "\nWater level: " + String(Current_reading_digi.water_level_d) +
+  "\nLight amount: " + String(Current_reading_digi.light_d) +
+  "////DIGITAL SENSOR READING END////";
+
+  Serial.println(digi_values_str);
 }
 
 void ADC_init(){
