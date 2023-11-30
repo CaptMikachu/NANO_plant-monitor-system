@@ -2,6 +2,7 @@
 #include "rgb_lcd.h" // for controlling LCD-display
 #include <math.h>
 #include <TimerOne.h>
+#include <avr/wdt.h>
 
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
@@ -22,8 +23,15 @@ Data data_arr[60]; //To hold data for 1 minute duration
 uint8_t data_arr_idx = 0;
 
 void setup() {
+  WDTCSR |= (1 << WDP3) | (1 << WDE); //Enable Watchdog timer with prescaler set to 512K cycles (4s) and in system reset mode
   Serial.begin(9600);
   lcd.begin(16, 2);
+  if(MCUSR & ( 1 << 3)){ //Check MCU status register if the watchdog system reset flag is set
+  Serial.println("Watchdog interrupt occurred!");
+  lcd.setCursor(0, 0);
+  lcd.print("Watchdog Reset!");
+  MCUSR &= ~(1 << 3); //Clear the watchdog reset flag
+  }
 
   Timer1.initialize(1000000); // call every 1 second(s)
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
@@ -124,6 +132,7 @@ void ADC_read(){
       default:
         break;
     } 
+    asm("wdr"); //Reset watchdog timer
   }
 
   /* Store the current data struct
