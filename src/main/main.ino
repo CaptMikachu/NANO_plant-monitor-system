@@ -2,7 +2,6 @@
 #include "rgb_lcd.h" // for controlling LCD-display
 #include <math.h>
 #include <TimerOne.h>
-#include <avr/wdt.h>
 
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
@@ -132,7 +131,9 @@ void ADC_read(){
       default:
         break;
     } 
-    asm("wdr"); //Reset watchdog timer
+    //Next 2 instructions reset the watchdog timer
+    WDTCSR &= ~(1 << WDE);
+    WDTCSR |= (1 << WDP3) | (1 << WDE);
   }
 
   /* Store the current data struct
