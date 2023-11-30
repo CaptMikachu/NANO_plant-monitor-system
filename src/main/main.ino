@@ -49,7 +49,7 @@ void setup() {
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
   ADC_init();
   DDRD |= B10000000; // Pin 7 as ouput (water pump), other as input (buttons etc.)
-  PORTD |= B01111100; // Water pump LOW, input pullup to buttons
+  PORTD |= B11111100; // Water pump LOW, input pullup to buttons
   attachInterrupt(digitalPinToInterrupt(2), button_one_ISR, FALLING); // Enter button
   attachInterrupt(digitalPinToInterrupt(3), button_two_ISR, FALLING); // Exit button
   Serial.println("setup complete");
@@ -223,12 +223,13 @@ void watering() {
 }
 
 void manual_watering() {
-  PORTD |= (1 << 7); // Turn on water pump
+  PORTD &= ~(1 << 7); // Turn off water pump
   button_one_state = (PIND & B00000100);
   while (!button_one_state){
     button_one_state = (PIND & B00000100);
   };
-  PORTD &= ~(1 << 7); // Turn off water pump
+
+  PORTD |= (1 << 7); // Turn on water pump
 }
 
 void settings() {
