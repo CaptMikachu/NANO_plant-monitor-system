@@ -2,6 +2,7 @@
 #include "rgb_lcd.h" // for controlling LCD-display
 #include <math.h>
 #include <TimerOne.h>
+#include <avr/wdt.h> //allows watchdog usage
 
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
@@ -22,20 +23,9 @@ Data data_arr[60]; //To hold data for 1 minute duration
 uint8_t data_arr_idx = 0;
 
 void setup() {
-  WDTCSR |= (1 << WDCE); //To allow WDE and WDPx bit change, will clear automatically after 4 cycles
-  WDTCSR &= ~(1 << WDE) | ~(1 << WDIE); //Disable watchdog system reset
-  delay(3000); //Wait for 3 secs to allow arduino boot up correctly
-  WDTCSR |= (1 << WDCE); //To allow WDE and WDPx bit change, will clear automatically after 4 cycles
-  WDTCSR |= (1 << WDP3) | (1 << WDE); //Enable Watchdog timer with prescaler set to 512K cycles (4s) and in system reset mode
+  wdt_enable(WDTO_4S); //Enable watchdog using 4 second time
   Serial.begin(9600);
   lcd.begin(16, 2);
-  if(MCUSR & ( 1 << 3)){ //Check MCU status register if the watchdog system reset flag is set
-    Serial.println("Watchdog interrupt occurred!");
-    lcd.setCursor(0, 0);
-    lcd.print("Watchdog Reset!");
-    MCUSR &= ~(1 << 3); //Clear the watchdog reset flag
-  }
-
   Timer1.initialize(1000000); // call every 1 second(s)
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
   ADC_init();
@@ -44,6 +34,7 @@ void setup() {
 }
 
 void loop() {
+  
   greeting();
   while(true){
     main_menu();
@@ -133,11 +124,7 @@ void ADC_read(){
       default:
         break;
     }
-    //Next 3 instructions reset the watchdog timer
-    WDTCSR |= (1 << WDCE); //To allow WDE and WDPx bit change, will clear automatically after 4 cycles
-    WDTCSR &= ~(1 << WDE);
-    WDTCSR |= (1 << WDP3) | (1 << WDE);
-    
+    wdt_reset(); //Reset watchdog   
   }
 
   /* Store the current data struct
