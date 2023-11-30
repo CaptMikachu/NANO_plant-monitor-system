@@ -6,8 +6,26 @@
 
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
+#define VIEW_MAX 4
 
 rgb_lcd lcd; // main display
+
+volatile bool button_one_flag = 0; // Enter button
+volatile bool button_two_flag = 0; // Exit button
+
+bool button_one_state = 0;
+bool button_two_state = 0;
+bool button_three_state = 0;
+bool button_four_state = 0;
+
+uint8_t view_mode = 1;
+
+struct Limits {
+  uint16_t moisture_top = 0;
+  uint16_t moisture_bottom = 0;
+  uint16_t temp_air = 0;
+  uint16_t water_level = 0;
+} Limits;
 
 struct Data { // digital values from each sensor
   uint16_t soil_top_d = 0;
@@ -26,19 +44,39 @@ void setup() {
   wdt_enable(WDTO_4S); //Enable watchdog using 4 second time
   Serial.begin(9600);
   lcd.begin(16, 2);
+
   Timer1.initialize(1000000); // call every 1 second(s)
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
   ADC_init();
-
+  DDRD |= B10000000; // Pin 7 as ouput (water pump), other as input (buttons etc.)
+  PORTD |= B01111100; // Water pump LOW, input pullup to buttons
+  attachInterrupt(digitalPinToInterrupt(2), button_one_ISR, FALLING); // Enter button
+  attachInterrupt(digitalPinToInterrupt(3), button_two_ISR, FALLING); // Exit button
   Serial.println("setup complete");
+  //greeting();
 }
 
 void loop() {
-  
-  greeting();
-  while(true){
-    main_menu();
+  while(!button_one_flag && !button_two_flag){
+    button_one_state = (PIND & B00000100);
+    button_two_state = (PIND & B00001000);
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if ((millis() % 200) == 0) {
+     main_menu();
+    }
   }
+  if (button_one_flag) {
+    //settings();
+    manual_watering();
+  } else if (button_two_flag) {
+    view_mode++;
+    if (view_mode > VIEW_MAX) {
+      view_mode = 1;
+    }
+  }
+  button_one_flag = 0;
+  button_two_flag = 0;
 }
 
 void greeting() {
@@ -58,14 +96,55 @@ void greeting() {
 }
 
 void main_menu() {
+  Serial.println(view_mode);
+  String keys = "", values = "";
+  switch (view_mode) {
+    case 1:
+      keys = "TEMP MOIST LIGHT";
+      values =
+      String(Current_reading_digi.temp_air_d) + " " +
+      String(Current_reading_digi.soil_top_d) + " " +
+      String(Current_reading_digi.light_d);
+      break;
+    case 2:
+      keys = "MOIST-t  MOIST-b";
+      values =
+      String(Current_reading_digi.soil_top_d) + " " +
+      String(Current_reading_digi.soil_bottom_d);
+      break;
+    case 3:
+      keys = "TEMP-air  TEMP-w";
+      values =
+      String(Current_reading_digi.temp_air_d) + " " +
+      String(Current_reading_digi.temp_water_d);
+      break;
+    case 4:
+      keys = "TEMP-w   WATER-l";
+      values =
+      String(Current_reading_digi.temp_water_d) + " " +
+      String(Current_reading_digi.water_level_d);
+      break;
+    default:
+      keys = "TEMP MOIST LIGHT";
+      values =
+      String(Current_reading_digi.temp_air_d) + " " +
+      String(Current_reading_digi.soil_top_d) + " " +
+      String(Current_reading_digi.light_d);
+      break;
+  }
+  lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("TEMP MOIST LIGHT");
+  lcd.print(keys);
+  lcd.setCursor(0, 1);
+  lcd.print(values);
 }
 
 void timerOneISR() {
   //Serial.println(Current_reading_digi.water_level_d);
+  SREG &= ~(1 << 7); //Disable interrupts by writing 0 to 7th bit in SREG
   ADC_read();
-  printout_formatter();
+  //printout_formatter();
+  SREG |= (1 << 7); //Enable interrupts by writing 1 to 7th bit in SREG
 }
 
 void printout_formatter() {
@@ -139,8 +218,31 @@ void ADC_read(){
 }
 
 
+void watering() {
 
+}
 
+void manual_watering() {
+  PORTD |= (1 << 7); // Turn on water pump
+  button_one_state = (PIND & B00000100);
+  while (!button_one_state){
+    button_one_state = (PIND & B00000100);
+  };
+  PORTD &= ~(1 << 7); // Turn off water pump
+}
 
+void settings() {
+  lcd.clear();
+  while (!button_two_flag) {
+    lcd.setCursor(0, 0);
+    lcd.print("SETTINGS");
+  }
+}
 
+void button_one_ISR() {
+  button_one_flag = 1;
+}
 
+void button_two_ISR() {
+  button_two_flag = 1;
+}
