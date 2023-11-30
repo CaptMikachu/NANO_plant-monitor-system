@@ -64,6 +64,7 @@ void timerOneISR() {
   //Serial.println(Current_reading_digi.water_level_d);
   SREG &= ~(1 << 7); //Disable interrupts by writing 0 to 7th bit in SREG
   ADC_read();
+  printout_formatter();
   SREG |= (1 << 7); //Enable interrupts by writing 1 to 7th bit in SREG
 }
 
@@ -77,7 +78,7 @@ void printout_formatter() {
   "\nTemperature, water: " + String(Current_reading_digi.temp_water_d) +
   "\nWater level: " + String(Current_reading_digi.water_level_d) +
   "\nLight amount: " + String(Current_reading_digi.light_d) +
-  "////DIGITAL SENSOR READING END////";
+  "\n////DIGITAL SENSOR READING END////\n";
 
   Serial.println(digi_values_str);
 }
