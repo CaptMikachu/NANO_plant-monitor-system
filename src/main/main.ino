@@ -22,14 +22,18 @@ Data data_arr[60]; //To hold data for 1 minute duration
 uint8_t data_arr_idx = 0;
 
 void setup() {
+  WDTCSR |= (1 << WDCE); //To allow WDE and WDPx bit change, will clear automatically after 4 cycles
+  WDTCSR &= ~(1 << WDE) | ~(1 << WDIE); //Disable watchdog system reset
+  delay(3000); //Wait for 3 secs to allow arduino boot up correctly
+  WDTCSR |= (1 << WDCE); //To allow WDE and WDPx bit change, will clear automatically after 4 cycles
   WDTCSR |= (1 << WDP3) | (1 << WDE); //Enable Watchdog timer with prescaler set to 512K cycles (4s) and in system reset mode
   Serial.begin(9600);
   lcd.begin(16, 2);
   if(MCUSR & ( 1 << 3)){ //Check MCU status register if the watchdog system reset flag is set
-  Serial.println("Watchdog interrupt occurred!");
-  lcd.setCursor(0, 0);
-  lcd.print("Watchdog Reset!");
-  MCUSR &= ~(1 << 3); //Clear the watchdog reset flag
+    Serial.println("Watchdog interrupt occurred!");
+    lcd.setCursor(0, 0);
+    lcd.print("Watchdog Reset!");
+    MCUSR &= ~(1 << 3); //Clear the watchdog reset flag
   }
 
   Timer1.initialize(1000000); // call every 1 second(s)
@@ -69,10 +73,8 @@ void main_menu() {
 
 void timerOneISR() {
   //Serial.println(Current_reading_digi.water_level_d);
-  SREG &= ~(1 << 7); //Disable interrupts by writing 0 to 7th bit in SREG
   ADC_read();
   printout_formatter();
-  SREG |= (1 << 7); //Enable interrupts by writing 1 to 7th bit in SREG
 }
 
 void printout_formatter() {
@@ -130,10 +132,12 @@ void ADC_read(){
         break;
       default:
         break;
-    } 
-    //Next 2 instructions reset the watchdog timer
+    }
+    //Next 3 instructions reset the watchdog timer
+    WDTCSR |= (1 << WDCE); //To allow WDE and WDPx bit change, will clear automatically after 4 cycles
     WDTCSR &= ~(1 << WDE);
     WDTCSR |= (1 << WDP3) | (1 << WDE);
+    
   }
 
   /* Store the current data struct
