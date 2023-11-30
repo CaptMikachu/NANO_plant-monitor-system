@@ -8,11 +8,17 @@
 
 rgb_lcd lcd; // main display
 
+struct Limits {
+  uint16_t moisture_top = 0;
+  uint16_t moisture_bottom = 0;
+  uint16_t temp_air = 0;
+  uint16_t water_level = 0;
+} Limits;
+
 struct Data { // digital values from each sensor
   uint16_t soil_top_d = 0;
   uint16_t soil_bottom_d = 0;
   uint16_t temp_air_d = 0;
-  uint16_t temp_water_d = 0;
   uint16_t water_level_d = 0;
   uint16_t light_d = 0;
 } Current_reading_digi;
@@ -75,7 +81,6 @@ void printout_formatter() {
   "\nSoil moisture, top: " + String(Current_reading_digi.soil_top_d) +
   "\nSoil moisture, bottom: " + String(Current_reading_digi.soil_bottom_d) +
   "\nTemperature, air: " + String(Current_reading_digi.temp_air_d) +
-  "\nTemperature, water: " + String(Current_reading_digi.temp_water_d) +
   "\nWater level: " + String(Current_reading_digi.water_level_d) +
   "\nLight amount: " + String(Current_reading_digi.light_d) +
   "\n////DIGITAL SENSOR READING END////\n";
@@ -138,8 +143,13 @@ void ADC_read(){
 }
 
 
+void watering() {
 
+}
 
+void manual_watering() {
+  while () {
 
-
+  }
+}
 
