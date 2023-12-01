@@ -49,9 +49,10 @@ void setup() {
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
   ADC_init();
   DDRD |= B10000000; // Pin 7 as ouput (water pump), other as input (buttons etc.)
-  PORTD |= B11111100; // Water pump LOW, input pullup to buttons
+  PORTD |= B11111100; // Water pump HIGH, input pullup to buttons
   attachInterrupt(digitalPinToInterrupt(2), button_one_ISR, FALLING); // Enter button
   attachInterrupt(digitalPinToInterrupt(3), button_two_ISR, FALLING); // Exit button
+  wdt_reset();
   Serial.println("setup complete");
   //greeting();
 }
@@ -140,11 +141,7 @@ void main_menu() {
 }
 
 void timerOneISR() {
-  //Serial.println(Current_reading_digi.water_level_d);
-  SREG &= ~(1 << 7); //Disable interrupts by writing 0 to 7th bit in SREG
   ADC_read();
-  //printout_formatter();
-  SREG |= (1 << 7); //Enable interrupts by writing 1 to 7th bit in SREG
 }
 
 void printout_formatter() {
@@ -171,6 +168,7 @@ void ADC_init(){
      A4-5 used for I2C and A6-7 no digital components exist */
   DIDR0 |= (1 << ADC0D) | (1 << ADC1D) | (1 << ADC2D) | (1 << ADC3D);
   Serial.println("ADC initialization complete");
+  wdt_reset();
 }
 
 void ADC_read(){
@@ -219,25 +217,29 @@ void ADC_read(){
 
 
 void watering() {
-
+  PORTD &= ~(1 << 7); // Turn on water pump
+  delay(1000);
+  PORTD |= (1 << 7); // Turn off water pump
 }
 
 void manual_watering() {
-  PORTD &= ~(1 << 7); // Turn off water pump
+  PORTD &= ~(1 << 7); // Turn on water pump
   button_one_state = (PIND & B00000100);
   while (!button_one_state){
     button_one_state = (PIND & B00000100);
   };
 
-  PORTD |= (1 << 7); // Turn on water pump
+  PORTD |= (1 << 7); // Turn off water pump
 }
 
 void settings() {
+  wdt_disable();
   lcd.clear();
   while (!button_two_flag) {
     lcd.setCursor(0, 0);
     lcd.print("SETTINGS");
   }
+  wdt_enable(WDTO_4S);
 }
 
 void button_one_ISR() {
