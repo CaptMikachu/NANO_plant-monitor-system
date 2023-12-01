@@ -36,7 +36,16 @@ struct Data { // digital values from each sensor
   uint16_t light_d = 0;
 } Current_reading_digi;
 
-Data data_arr[60]; //To hold data for 1 minute duration
+struct ConvertData { // Converted values of each sensor
+  char soil_top = 0;
+  char soil_bottom = 0;
+  uint8_t temp_air = 0;
+  uint8_t temp_water = 0;
+  uint8_t water_level = 0;
+  uint16_t light = 0;
+} Converted_current_reading;
+
+ConvertData data_arr[60]; //To hold data for 1 minute duration
 
 uint8_t data_arr_idx = 0;
 
@@ -97,40 +106,39 @@ void greeting() {
 }
 
 void main_menu() {
-  Serial.println(view_mode);
   String keys = "", values = "";
   switch (view_mode) {
     case 1:
       keys = "TEMP MOIST LIGHT";
       values =
-      String(Current_reading_digi.temp_air_d) + " " +
-      String(Current_reading_digi.soil_top_d) + " " +
-      String(Current_reading_digi.light_d);
+      String(Converted_current_reading.temp_air) + " " +
+      String(Converted_current_reading.soil_top) + " " +
+      String(Converted_current_reading.light);
       break;
     case 2:
       keys = "MOIST-t  MOIST-b";
       values =
-      String(Current_reading_digi.soil_top_d) + " " +
-      String(Current_reading_digi.soil_bottom_d);
+      String(Converted_current_reading.soil_top) + " " +
+      String(Converted_current_reading.soil_bottom);
       break;
     case 3:
       keys = "TEMP-air  TEMP-w";
       values =
-      String(Current_reading_digi.temp_air_d) + " " +
-      String(Current_reading_digi.temp_water_d);
+      String(Converted_current_reading.temp_air) + " " +
+      String(Converted_current_reading.temp_water);
       break;
     case 4:
       keys = "TEMP-w   WATER-l";
       values =
-      String(Current_reading_digi.temp_water_d) + " " +
-      String(Current_reading_digi.water_level_d);
+      String(Converted_current_reading.temp_water) + " " +
+      String(Converted_current_reading.water_level);
       break;
     default:
       keys = "TEMP MOIST LIGHT";
       values =
-      String(Current_reading_digi.temp_air_d) + " " +
-      String(Current_reading_digi.soil_top_d) + " " +
-      String(Current_reading_digi.light_d);
+      String(Converted_current_reading.temp_air) + " " +
+      String(Converted_current_reading.soil_top) + " " +
+      String(Converted_current_reading.light);
       break;
   }
   lcd.clear();
@@ -140,20 +148,16 @@ void main_menu() {
   lcd.print(values);
 }
 
-void timerOneISR() {
-  ADC_read();
-}
-
 void printout_formatter() {
   /*Printout for digital values*/
   String digi_values_str =
   "====DIGITAL SENSOR READING===="
-  "\nSoil moisture, top: " + String(Current_reading_digi.soil_top_d) +
-  "\nSoil moisture, bottom: " + String(Current_reading_digi.soil_bottom_d) +
-  "\nTemperature, air: " + String(Current_reading_digi.temp_air_d) +
-  "\nTemperature, water: " + String(Current_reading_digi.temp_water_d) +
-  "\nWater level: " + String(Current_reading_digi.water_level_d) +
-  "\nLight amount: " + String(Current_reading_digi.light_d) +
+  "\nSoil moisture, top: " + String(Converted_current_reading.soil_top) +
+  "\nSoil moisture, bottom: " + String(Converted_current_reading.soil_bottom) +
+  "\nTemperature, air: " + String(Converted_current_reading.temp_air) +
+  "\nTemperature, water: " + String(Converted_current_reading.temp_water) +
+  "\nWater level: " + String(Converted_current_reading.water_level) +
+  "\nLight amount: " + String(Converted_current_reading.light) +
   "\n////DIGITAL SENSOR READING END////\n";
 
   Serial.println(digi_values_str);
@@ -203,18 +207,59 @@ void ADC_read(){
     }
     wdt_reset(); //Reset watchdog   
   }
+  convert_data();
+}
 
-  /* Store the current data struct
-     to an array holding 60 data structs at a time
-     so save data for a minute */
-  data_arr[data_arr_idx] = Current_reading_digi;  
+void convert_data(){ //Convert the current reading data to corresponding units
+
+  float air_temp;
+  float water_temp;
+  float beta = 1.0 / 3435; //Beta value for thermistor
+  float T0 = 1.0 / 298.15; //Reference temp for thermistor in kelvin
+  float K;
+  float R0 = 10000; //Resistance at 25C
+  //Moisture conversion for top soil
+  if(Current_reading_digi.soil_top_d < 300){
+    Converted_current_reading.soil_top = 'L'; //Low moisture 
+  }else if(Current_reading_digi.soil_top_d >= 300 && Current_reading_digi.soil_top_d < 700){
+    Converted_current_reading.soil_top = 'M'; //Medium moisture
+  }else{
+    Converted_current_reading.soil_top = 'H'; //High moisture
+  }
+  
+  //Moisture conversion for bottom soil
+  if(Current_reading_digi.soil_bottom_d < 300){
+    Converted_current_reading.soil_bottom = 'L'; //Low moisture 
+  }else if(Current_reading_digi.soil_bottom_d >= 300 && Current_reading_digi.soil_bottom_d < 700){
+    Converted_current_reading.soil_bottom = 'M'; //Medium moisture
+  }else{
+    Converted_current_reading.soil_bottom = 'H'; //High moisture
+  }
+
+  //Air temperature conversion
+  air_temp = (float)Current_reading_digi.temp_air_d * (5/10.24);
+  Converted_current_reading.temp_air = floor(air_temp);
+  
+  //Water temperature conversion (sensor is a thermistor)
+
+  K = 1.0 / (T0 + beta*(log(1023.0 / (float)Current_reading_digi.temp_water_d - 1.00)));
+  water_temp = K - 273.15;
+  Converted_current_reading.temp_water = floor(water_temp);
+
+  //Water level in cm(?)
+  Converted_current_reading.water_level = (500.0 / 1023) * Current_reading_digi.water_level_d;
+
+  //Light level (TODO define values for low, med, hi)
+  Converted_current_reading.light = Current_reading_digi.light_d;
+
+  data_arr[data_arr_idx] = Converted_current_reading; //Store the converted values from 1 minute duration
   if(data_arr_idx == 59){
     data_arr_idx = 0;
   }else{
     data_arr_idx++;
   }
-}
 
+}
 
 void watering() {
   PORTD &= ~(1 << 7); // Turn on water pump
@@ -240,6 +285,10 @@ void settings() {
     lcd.print("SETTINGS");
   }
   wdt_enable(WDTO_4S);
+}
+
+void timerOneISR() {
+  ADC_read();
 }
 
 void button_one_ISR() {
