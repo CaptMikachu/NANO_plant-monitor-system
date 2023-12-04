@@ -8,6 +8,96 @@
 #define LCD_ROWS 2
 #define VIEW_MAX 4
 
+#define NOTE_B0  31
+#define NOTE_C1  33
+#define NOTE_CS1 35
+#define NOTE_D1  37
+#define NOTE_DS1 39
+#define NOTE_E1  41
+#define NOTE_F1  44
+#define NOTE_FS1 46
+#define NOTE_G1  49
+#define NOTE_GS1 52
+#define NOTE_A1  55
+#define NOTE_AS1 58
+#define NOTE_B1  62
+#define NOTE_C2  65
+#define NOTE_CS2 69
+#define NOTE_D2  73
+#define NOTE_DS2 78
+#define NOTE_E2  82
+#define NOTE_F2  87
+#define NOTE_FS2 93
+#define NOTE_G2  98
+#define NOTE_GS2 104
+#define NOTE_A2  110
+#define NOTE_AS2 117
+#define NOTE_B2  123
+#define NOTE_C3  131
+#define NOTE_CS3 139
+#define NOTE_D3  147
+#define NOTE_DS3 156
+#define NOTE_E3  165
+#define NOTE_F3  175
+#define NOTE_FS3 185
+#define NOTE_G3  196
+#define NOTE_GS3 208
+#define NOTE_A3  220
+#define NOTE_AS3 233
+#define NOTE_B3  247
+#define NOTE_C4  262
+#define NOTE_CS4 277
+#define NOTE_D4  294
+#define NOTE_DS4 311
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_FS4 370
+#define NOTE_G4  392
+#define NOTE_GS4 415
+#define NOTE_A4  440
+#define NOTE_AS4 466
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_CS5 554
+#define NOTE_D5  587
+#define NOTE_DS5 622
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_FS5 740
+#define NOTE_G5  784
+#define NOTE_GS5 831
+#define NOTE_A5  880
+#define NOTE_AS5 932
+#define NOTE_B5  988
+#define NOTE_C6  1047
+#define NOTE_CS6 1109
+#define NOTE_D6  1175
+#define NOTE_DS6 1245
+#define NOTE_E6  1319
+#define NOTE_F6  1397
+#define NOTE_FS6 1480
+#define NOTE_G6  1568
+#define NOTE_GS6 1661
+#define NOTE_A6  1760
+#define NOTE_AS6 1865
+#define NOTE_B6  1976
+#define NOTE_C7  2093
+#define NOTE_CS7 2217
+#define NOTE_D7  2349
+#define NOTE_DS7 2489
+#define NOTE_E7  2637
+#define NOTE_F7  2794
+#define NOTE_FS7 2960
+#define NOTE_G7  3136
+#define NOTE_GS7 3322
+#define NOTE_A7  3520
+#define NOTE_AS7 3729
+#define NOTE_B7  3951
+#define NOTE_C8  4186
+#define NOTE_CS8 4435
+#define NOTE_D8  4699
+#define NOTE_DS8 4978
+
 rgb_lcd lcd; // main display
 
 volatile bool button_one_flag = 0; // Enter button
@@ -21,10 +111,13 @@ bool button_four_state = 0;
 uint8_t view_mode = 1;
 
 struct Limits {
-  uint16_t moisture_top = 0;
-  uint16_t moisture_bottom = 0;
-  uint16_t temp_air = 0;
-  uint16_t water_level = 0;
+  uint16_t moisture_top_LOW = 300;
+  uint16_t moisture_top_MED = 700;
+  uint16_t moisture_bottom_HIGH = 700;
+  uint8_t temp_air_MIN = 18;
+  uint8_t temp_water_MIN = 18;
+  int16_t water_level_LOW = 10;
+  uint8_t water_bucket_height = 20;
 } Limits;
 
 struct Data { // digital values from each sensor
@@ -74,6 +167,9 @@ void loop() {
     button_four_state = (PIND & B00100000);
     if ((millis() % 200) == 0) {
      main_menu();
+    }
+    if (millis() % 10000 == 0) {
+      limits_check();
     }
   }
   if (button_one_flag) {
@@ -148,7 +244,7 @@ void main_menu() {
   lcd.print(values);
 }
 
-void printout_formatter() {
+void printout() {
   /*Printout for digital values*/
   String digi_values_str =
   "====DIGITAL SENSOR READING===="
@@ -216,7 +312,7 @@ void convert_data(){ //Convert the current reading data to corresponding units
   float water_temp;
   float beta = 1.0 / 3435; //Beta value for thermistor
   float T0 = 1.0 / 298.15; //Reference temp for thermistor in kelvin
-  float K;
+  float K; // Temperature in Kelvins
   float R0 = 10000; //Resistance at 25C
   //Moisture conversion for top soil
   if(Current_reading_digi.soil_top_d < 300){
@@ -238,12 +334,12 @@ void convert_data(){ //Convert the current reading data to corresponding units
 
   //Air temperature conversion
   air_temp = (float)Current_reading_digi.temp_air_d * (5/10.24);
-  Converted_current_reading.temp_air = floor(air_temp);
+  Converted_current_reading.temp_air = round(air_temp);
   
   //Water temperature conversion (sensor is a thermistor)
 
   K = 1.0 / (T0 + beta*(log(1023.0 / (float)Current_reading_digi.temp_water_d - 1.00)));
-  water_temp = K - 273.15;
+  water_temp = K - 273.15; // Convert Kelvins to Celsius
   Converted_current_reading.temp_water = floor(water_temp);
 
   //Water level in cm(?)
@@ -263,7 +359,7 @@ void convert_data(){ //Convert the current reading data to corresponding units
 
 void watering() {
   PORTD &= ~(1 << 7); // Turn on water pump
-  delay(1000);
+  delay(3000);
   PORTD |= (1 << 7); // Turn off water pump
 }
 
@@ -272,10 +368,80 @@ void manual_watering() {
   button_one_state = (PIND & B00000100);
   while (!button_one_state){
     button_one_state = (PIND & B00000100);
+    delay(10);
   };
 
   PORTD |= (1 << 7); // Turn off water pump
+  
 }
+
+void limits_check() {
+  if (Current_reading_digi.soil_top_d < Limits.moisture_top_LOW &&
+      Current_reading_digi.soil_bottom_d < Limits.moisture_bottom_HIGH) {
+    watering();
+  }
+  if ((Limits.water_bucket_height - Converted_current_reading.water_level) < Limits.water_level_LOW) {
+    tunes(1);
+  }
+  if (Converted_current_reading.temp_air < Limits.temp_air_MIN) {
+    tunes(2);
+  }
+  if (Converted_current_reading.temp_water < Limits.temp_water_MIN) {
+    tunes(3);
+  }
+}
+
+void tunes(uint8_t tune_id) {
+  switch (tune_id) {
+    case 1: // LOW WATER LEVEL (cccp)
+      hymn();
+      break;
+    case 2: // LOW AIR TEMPERATURE
+      erika();
+      break;
+    case 3: // LOW WATER TEMPERATURE
+      warning();
+      break;
+  }
+}
+
+void hymn() {
+  Serial.println("CCCP");
+  // notes in the melody
+  int melody[] = {
+  NOTE_G4, NOTE_C5, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_E4, NOTE_E4,
+  NOTE_A4, NOTE_G4, NOTE_F4, NOTE_G4
+  };
+  // note durations: 4 = quarter note, 8 = eighth note, etc.:
+  int noteDurations[] = {
+  2, 2, 4, 4, 2, 4, 4, 2, 4, 4, 1
+  };
+  // iterate over the notes of the melody:
+  for (int thisNote = 0; thisNote < 13; thisNote++  ) {
+
+  // to calculate the note duration, take one second
+  // divided by the note type.
+  //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+  int noteDuration = 800/noteDurations[thisNote];
+  tone(6, melody[thisNote],noteDuration);
+
+  // to distinguish the notes, set a minimum time between them.
+  // the note's duration   30% seems to work well:
+  int pauseBetweenNotes = noteDuration * 1.30;
+  delay(pauseBetweenNotes);
+  // stop the tone playing:
+  noTone(8);
+  }
+}
+
+void erika() {
+  Serial.println("ERIKA");
+}
+
+void warning() {
+  Serial.println("WARNING");
+}
+
 
 void settings() {
   wdt_disable();
