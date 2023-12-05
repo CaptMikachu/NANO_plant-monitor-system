@@ -4,10 +4,7 @@
 4. Add songs (erika & one other)
 5. Build prototype
 6. Main Menu formatting, adjust bottom row to match top row
+7. XXXXX DONE XXXXX Timer2 - MODIFY BACK TO TIMER1, TONE SCREWS UP TIMER2
 
 UPDATED
 5.12.2023 (Created TO-DO list)
-
-
-
-Timer2 - MODIFY BACK TO TIMER1, TONE SCREWS UP TIMER2
