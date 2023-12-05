@@ -141,24 +141,14 @@ struct ConvertData { // Converted values of each sensor
 ConvertData data_arr[60]; //To hold data for 1 minute duration
 
 uint8_t data_arr_idx = 0;
-uint8_t timer_ovf_count = 0;
 
 void setup() {
   wdt_enable(WDTO_4S); //Enable watchdog using 4 second time
   Serial.begin(9600);
   lcd.begin(16, 2);
 
-  //Initialize timer2 to interrupt every 1 second
-  /* 15624 is what the compare register value should be
-     timer2 is only 8 bit so max value is 256 so the amount of
-     overflows needed for 1 second is 15624 / 256 = 61
-  */
-  TCCR2A = 0; //Just to make sure register is all 0
-  TCNT2 = 0; //Reset the counter value register
-  TCCR2B = B00000111; //Write b111 to control register to set prescaler to 1024
-  TIMSK2 = (1 << 0); //Enable overflow interrupt
-  TIFR2 &= ~(1 << 0); //Clear the overflow interrupt flag
-
+  Timer1.initialize(1000000); // call every 1 second(s)
+  Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
   ADC_init();
   DDRD |= B10000000; // Pin 7 as ouput (water pump), other as input (buttons etc.)
   PORTD |= B11111100; // Water pump HIGH, input pullup to buttons
@@ -463,12 +453,8 @@ void settings() {
   wdt_enable(WDTO_4S);
 }
 
-ISR(TIMER2_OVF_vect){ //Interrupt routine for timer2 overflow
-  timer_ovf_count++;
-  if(timer_ovf_count == 63){ //If 1 second has passed
+void timerOneISR() {
   ADC_read();
-  timer_ovf_count = 0;
-  }
 }
 
 void button_one_ISR() {
