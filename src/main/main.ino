@@ -117,7 +117,7 @@ struct Limits {
   uint8_t temp_air_MIN = 18;
   uint8_t temp_water_MIN = 18;
   int16_t water_level_LOW = 10;
-  uint8_t water_bucket_height = 20;
+  uint8_t water_bucket_height = 15;
 } Limits;
 
 struct Data { // digital values from each sensor
