@@ -1,4 +1,4 @@
-1. One more block with registers (TimeOne?)
+1. One more block with registers (TimeOne?) !!!Done with timer2, check if interrupts tone library!!!
 2. Implement settings to adjust Limits-struct with buttons
 3. Implement 2 more buttons for settings
 4. Add songs (erika & one other)
