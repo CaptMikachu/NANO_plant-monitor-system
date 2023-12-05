@@ -1,0 +1,9 @@
+1. One more block with registers (TimeOne?)
+2. Implement settings to adjust Limits-struct with buttons
+3. Implement 2 more buttons for settings
+4. Add songs (erika & one other)
+5. Build prototype
+6. Main Menu formatting, adjust bottom row to match top row
+
+UPDATED
+5.12.2023 (Created TO-DO list)
