@@ -4,7 +4,19 @@
 4. Add songs (erika & one other)
 5. Build prototype
 6. Main Menu formatting, adjust bottom row to match top row
-7. XXXXX DONE XXXXX Timer2 - MODIFY BACK TO TIMER1, TONE SCREWS UP TIMER2
+7. if (millis() % 10000 == 0) {
+      limits_check();
+    }
+	Probably not consistent, add timeNow etc.?
+8. ----DONE---- Timer2 - MODIFY BACK TO TIMER1, TONE SCREWS UP TIMER2
 
 UPDATED
-5.12.2023 (Created TO-DO list)
+5.12.2023 (Created TO-DO list) - Mika
+
+
+Buttons
+
+1 - D2
+2 - D3
+3 - D4
+4 - D5 <--- Not yet working, probably not configured in code
