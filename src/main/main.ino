@@ -7,6 +7,7 @@
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
 #define VIEW_MAX 4
+#define SETTINGS_VIEW_MAX 7
 
 #define NOTE_B0  31
 #define NOTE_C1  33
@@ -100,19 +101,22 @@
 
 rgb_lcd lcd; // main display
 
+unsigned long latest_time = 0;
+
 volatile bool button_one_flag = 0; // Enter button
 volatile bool button_two_flag = 0; // Exit button
 
-bool button_one_state = 0;
-bool button_two_state = 0;
-bool button_three_state = 0;
-bool button_four_state = 0;
+bool button_one_state = 1;
+bool button_two_state = 1;
+bool button_three_state = 1;
+bool button_four_state = 1;
 
 uint8_t view_mode = 1;
+uint8_t settings_view_mode = 1;
 
 struct Limits {
   uint16_t moisture_top_LOW = 300;
-  uint16_t moisture_top_MED = 700;
+  uint16_t moisture_top_HIGH = 700;
   uint16_t moisture_bottom_HIGH = 700;
   uint8_t temp_air_MIN = 18;
   uint8_t temp_water_MIN = 18;
@@ -160,7 +164,8 @@ void setup() {
 }
 
 void loop() {
-  while(!button_one_flag && !button_two_flag){
+  latest_time = millis();
+  while((!button_one_flag && !button_two_flag) && (button_three_state && button_four_state)) {
     button_one_state = (PIND & B00000100);
     button_two_state = (PIND & B00001000);
     button_three_state = (PIND & B00010000);
@@ -168,21 +173,34 @@ void loop() {
     if ((millis() % 200) == 0) {
      main_menu();
     }
-    if (millis() % 10000 == 0) {
+    if (millis() - latest_time > 10000) {
       limits_check();
+      latest_time = millis();
     }
   }
   if (button_one_flag) {
-    //settings();
     manual_watering();
   } else if (button_two_flag) {
     view_mode++;
     if (view_mode > VIEW_MAX) {
       view_mode = 1;
     }
+  } else if (!button_three_state) {
+    button_one_flag = 0;
+    button_two_flag = 0;
+    settings();
+  } else if (!button_four_state) {
+    button_one_flag = 0;
+    button_two_flag = 0;
+    printout();
   }
+
   button_one_flag = 0;
   button_two_flag = 0;
+  button_one_state = (PIND & B00000100);
+  button_two_state = (PIND & B00001000);
+  button_three_state = (PIND & B00010000);
+  button_four_state = (PIND & B00100000);
 }
 
 void greeting() {
@@ -245,16 +263,16 @@ void main_menu() {
 }
 
 void printout() {
-  /*Printout for digital values*/
+  /*Printout for converted values*/
   String digi_values_str =
-  "====DIGITAL SENSOR READING===="
+  "====CONVERTED SENSOR READING===="
   "\nSoil moisture, top: " + String(Converted_current_reading.soil_top) +
   "\nSoil moisture, bottom: " + String(Converted_current_reading.soil_bottom) +
   "\nTemperature, air: " + String(Converted_current_reading.temp_air) +
   "\nTemperature, water: " + String(Converted_current_reading.temp_water) +
   "\nWater level: " + String(Converted_current_reading.water_level) +
   "\nLight amount: " + String(Converted_current_reading.light) +
-  "\n////DIGITAL SENSOR READING END////\n";
+  "\n////CONVERTED SENSOR READING END////\n";
 
   Serial.println(digi_values_str);
 }
@@ -310,23 +328,23 @@ void convert_data(){ //Convert the current reading data to corresponding units
 
   float air_temp;
   float water_temp;
-  float beta = 1.0 / 3435; //Beta value for thermistor
-  float T0 = 1.0 / 298.15; //Reference temp for thermistor in kelvin
+  float beta = 1.0 / 3435; //Beta value for thermistor, change to match your temperature sensor
+  float T0 = 1.0 / 298.15; //Reference temp for thermistor in kelvin, change to match your temperature sensor
   float K; // Temperature in Kelvins
-  float R0 = 10000; //Resistance at 25C
+  float R0 = 10000; //Resistance at 25C, change to match your temperature sensor
   //Moisture conversion for top soil
-  if(Current_reading_digi.soil_top_d < 300){
+  if(Current_reading_digi.soil_top_d < Limits.moisture_top_LOW){
     Converted_current_reading.soil_top = 'L'; //Low moisture 
-  }else if(Current_reading_digi.soil_top_d >= 300 && Current_reading_digi.soil_top_d < 700){
+  }else if(Current_reading_digi.soil_top_d >= Limits.moisture_top_LOW && Current_reading_digi.soil_top_d < Limits.moisture_top_HIGH){
     Converted_current_reading.soil_top = 'M'; //Medium moisture
   }else{
     Converted_current_reading.soil_top = 'H'; //High moisture
   }
   
   //Moisture conversion for bottom soil
-  if(Current_reading_digi.soil_bottom_d < 300){
+  if(Current_reading_digi.soil_bottom_d < Limits.moisture_top_LOW){
     Converted_current_reading.soil_bottom = 'L'; //Low moisture 
-  }else if(Current_reading_digi.soil_bottom_d >= 300 && Current_reading_digi.soil_bottom_d < 700){
+  }else if(Current_reading_digi.soil_bottom_d >= Limits.moisture_top_LOW && Current_reading_digi.soil_bottom_d < Limits.moisture_bottom_HIGH){
     Converted_current_reading.soil_bottom = 'M'; //Medium moisture
   }else{
     Converted_current_reading.soil_bottom = 'H'; //High moisture
@@ -342,7 +360,7 @@ void convert_data(){ //Convert the current reading data to corresponding units
   water_temp = K - 273.15; // Convert Kelvins to Celsius
   Converted_current_reading.temp_water = floor(water_temp);
 
-  //Water level in cm(?)
+  //Water level in cm (probably, should double check)
   Converted_current_reading.water_level = (500.0 / 1023) * Current_reading_digi.water_level_d;
 
   //Light level (TODO define values for low, med, hi)
@@ -445,12 +463,308 @@ void warning() {
 
 void settings() {
   wdt_disable();
-  lcd.clear();
-  while (!button_two_flag) {
-    lcd.setCursor(0, 0);
-    lcd.print("SETTINGS");
+  button_one_flag = 0;
+  button_two_flag = 0;
+  String view_name;
+  latest_time = millis();
+  while (!button_one_flag) {
+    button_four_state = (PIND & B00100000);
+    if (button_two_flag) {
+      settings_view_mode++;
+      button_two_flag = 0;
+      if (settings_view_mode > SETTINGS_VIEW_MAX) {
+        settings_view_mode = 1;
+      }
+    }
+    switch (settings_view_mode) {
+      case 1:
+        view_name = "MOIST-top LOW";
+        break;
+      case 2:
+        view_name = "MOIST-top MED";
+        break;
+      case 3:
+        view_name = "MOIST-bot. HIGH";
+        break;
+      case 4:
+        view_name = "TEMP-air MIN";
+        break;
+      case 5:
+        view_name = "TEMP-water MIN";
+        break;
+      case 6:
+        view_name = "Water level LOW";
+        break;
+      case 7:
+        view_name = "Water bucket h.";
+        break;
+      default:
+        view_name = "MOIST-top LOW";
+        break;
+    }
+    if (millis() - latest_time > 300) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("SETTINGS");
+      lcd.setCursor(0, 1);
+      lcd.print(view_name);
+      latest_time = millis();
+    }
+    if (!button_four_state) {
+      adjust_limits(settings_view_mode);
+    }
   }
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("SETTINGS SAVED!");
+  delay(1000);
+  lcd.clear();
+  button_one_flag = 0;
+  button_two_flag = 0;
+  button_one_state = (PIND & B00000100);
+  button_two_state = (PIND & B00001000);
+  button_three_state = (PIND & B00010000);
+  button_four_state = (PIND & B00100000);
   wdt_enable(WDTO_4S);
+}
+
+void adjust_limits(uint8_t limit_id) {
+  switch (limit_id) {
+      case 1:
+        adjust_moisture_top_LOW();
+        break;
+      case 2:
+        adjust_moisture_top_HIGH();
+        break;
+      case 3:
+        adjust_moisture_bottom_HIGH();
+        break;
+      case 4:
+        adjust_temp_air_MIN();
+        break;
+      case 5:
+        adjust_temp_water_MIN();
+        break;
+      case 6:
+        adjust_water_level_LOW();
+        break;
+      case 7:
+        adjust_water_bucket_height();
+        break;
+      default:
+        adjust_moisture_top_LOW();
+        break;
+    }
+}
+
+void adjust_moisture_top_LOW() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("MOIST-top LOW");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.moisture_top_LOW);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.moisture_top_LOW -= 50;
+      if (Limits.moisture_top_LOW < 100) {
+        Limits.moisture_top_LOW = 500;
+      }
+    } else if (!button_four_state) {
+      Limits.moisture_top_LOW += 50;
+      if (Limits.moisture_top_LOW > 500) {
+        Limits.moisture_top_LOW = 100;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
+}
+
+void adjust_moisture_top_HIGH() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("MOIST-top HIGH");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.moisture_top_HIGH);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.moisture_top_HIGH -= 50;
+      if (Limits.moisture_top_HIGH < 550) {
+        Limits.moisture_top_HIGH = 900;
+      }
+    } else if (!button_four_state) {
+      Limits.moisture_top_HIGH += 50;
+      if (Limits.moisture_top_HIGH > 900) {
+        Limits.moisture_top_HIGH = 550;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
+}
+
+void adjust_moisture_bottom_HIGH() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("MOIST-bot. HIGH");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.moisture_bottom_HIGH);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.moisture_bottom_HIGH -= 50;
+      if (Limits.moisture_bottom_HIGH < 550) {
+        Limits.moisture_bottom_HIGH = 1000;
+      }
+    } else if (!button_four_state) {
+      Limits.moisture_bottom_HIGH += 50;
+      if (Limits.moisture_bottom_HIGH > 1000) {
+        Limits.moisture_bottom_HIGH = 550;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
+}
+
+void adjust_temp_air_MIN() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("TEMP-air MIN");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.temp_air_MIN);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.temp_air_MIN -= 1;
+      if (Limits.temp_air_MIN < 1) {
+        Limits.temp_air_MIN = 50;
+      }
+    } else if (!button_four_state) {
+      Limits.temp_air_MIN += 1;
+      if (Limits.temp_air_MIN > 50) {
+        Limits.temp_air_MIN = 1;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
+}
+
+void adjust_temp_water_MIN() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("TEMP-water MIN");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.temp_water_MIN);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.temp_water_MIN -= 1;
+      if (Limits.temp_water_MIN < 1) {
+        Limits.temp_water_MIN = 40;
+      }
+    } else if (!button_four_state) {
+      Limits.temp_water_MIN += 1;
+      if (Limits.temp_water_MIN > 40) {
+        Limits.temp_water_MIN = 1;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
+}
+
+void adjust_water_level_LOW() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Water level LOW");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.water_level_LOW);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.water_level_LOW -= 2;
+      if (Limits.water_level_LOW < 10) {
+        Limits.water_level_LOW = 90;
+      }
+    } else if (!button_four_state) {
+      Limits.water_level_LOW += 2;
+      if (Limits.water_level_LOW > 90) {
+        Limits.water_level_LOW = 10;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
+}
+
+void adjust_water_bucket_height() {
+  delay(200); // To let button state reset because of the debounce capacitor
+  button_one_flag = 0;
+  button_two_flag = 0;
+  while (!button_one_flag) {
+    if (millis() - latest_time > 500) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Water bucket h.");
+      lcd.setCursor(0, 1);
+      lcd.print(Limits.water_bucket_height);
+      latest_time = millis();
+    }
+    button_three_state = (PIND & B00010000);
+    button_four_state = (PIND & B00100000);
+    if (!button_three_state) {
+      Limits.water_bucket_height -= 5;
+      if (Limits.water_bucket_height < 15) {
+        Limits.water_bucket_height = 100;
+      }
+    } else if (!button_four_state) {
+      Limits.water_bucket_height += 5;
+      if (Limits.water_bucket_height > 100) {
+        Limits.water_bucket_height = 15;
+      }
+    }
+    while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
+  }
 }
 
 void timerOneISR() {

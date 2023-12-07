@@ -1,17 +1,20 @@
-1. One more block with registers (TimeOne?) !!!Done with timer2, check if interrupts tone library!!!
-2. Implement settings to adjust Limits-struct with buttons
-3. Implement 2 more buttons for settings
+1. One more block with registers (EEPROM, save limits values)
+2. ----DONE---- Implement settings to adjust Limits-struct with buttons
+3. ----DONE---- Implement 2 more buttons for settings
 4. Add songs (erika & one other)
-5. Build prototype
+5. Build prototype (Connect sensors and take pics of the beauty)
 6. Main Menu formatting, adjust bottom row to match top row
-7. if (millis() % 10000 == 0) {
+7. ----DONE---- if (millis() % 10000 == 0) {
       limits_check();
     }
 	Probably not consistent, add timeNow etc.?
 8. ----DONE---- Timer2 - MODIFY BACK TO TIMER1, TONE SCREWS UP TIMER2
+9. ----DONE---- Update data conversion to use values from Limits-struct with soil moistures
+10. When done, un-comment GREETING at the start of the program
 
 UPDATED
 5.12.2023 (Created TO-DO list) - Mika
+7.12.2023 (Created TO-DO list) - Mika
 
 
 Buttons
@@ -19,4 +22,4 @@ Buttons
 1 - D2
 2 - D3
 3 - D4
-4 - D5 <--- Not yet working, probably not configured in code
+4 - D5
