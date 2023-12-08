@@ -120,7 +120,7 @@ struct Limits {
   uint16_t moisture_bottom_HIGH = 700;
   uint8_t temp_air_MIN = 18;
   uint8_t temp_water_MIN = 18;
-  int16_t water_level_LOW = 10;
+  uint8_t water_level_LOW = 10;
   uint8_t water_bucket_height = 15;
 } Limits;
 
@@ -514,6 +514,8 @@ void settings() {
       adjust_limits(settings_view_mode);
     }
   }
+  //Save settings to EEPROM here
+  save_to_eeprom();
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("SETTINGS SAVED!");
@@ -526,6 +528,86 @@ void settings() {
   button_three_state = (PIND & B00010000);
   button_four_state = (PIND & B00100000);
   wdt_enable(WDTO_4S);
+}
+
+void save_to_eeprom(){
+  cli();
+  EEAR = 0; //Make sure the EEPROM address register is all 0
+  uint8_t bytes[2]; //Array to hold the value of variables bigger than 1 byte
+
+  //First we have to split the uint16_t datas to separate bytes
+  bytes[0] = (Limits.moisture_top_LOW >> 8) & 0xFF; //Shift the first eight bits starting from left and then AND them with 0xFF which equals to 255
+  bytes[1] = (Limits.moisture_top_LOW >> 0) & 0xFF; //Then get the last eight bits starting from left and do the same
+
+  while(EECR & EEPE); //Wait until the EEPE bit is 0, indicates that the last write operation is done
+  EEAR = 1; //Write to the first EEPROM address
+  EEDR = bytes[0]; //Write the first eight bits from the value, starting from left, to EEPROM
+  EECR = B00000100; //EEPROM master write enable, clears automatically after 4 cycles
+  EECR = (1 << EEPE); //Write 1 to EEPE to start writing
+  while(EECR & EEPE);
+  EEAR = 2; //Write to the first EEPROM address
+  EEDR = bytes[1]; //Write the first eight bits from the value, starting from left, to EEPROM
+  EECR = B00000100; //EEPROM master write enable, clears automatically after 4 cycles, also bits EEPM1 EEPM0 are 0 so erase and write with same opeartion
+  EECR = (1 << EEPE); //Write 1 to EEPE to start writing
+  while(EECR & EEPE);
+
+  bytes[0] = (Limits.moisture_top_HIGH >> 8) & 0xFF;
+  bytes[1] = (Limits.moisture_top_HIGH >> 0) & 0xFF;
+
+  while(EECR & EEPE);
+  EEAR = 3;
+  EEDR = bytes[0];
+  EECR = B00000100;
+  EECR = (1 << EEPE);
+  while(EECR & EEPE);
+  EEAR = 4;
+  EEDR = bytes[1];
+  EECR = B00000100;
+  EECR = (1 << EEPE); 
+  while(EECR & EEPE);
+
+  bytes[0] = (Limits.moisture_bottom_HIGH >> 8) & 0xFF;
+  bytes[1] = (Limits.moisture_bottom_HIGH >> 0) & 0xFF;
+
+  while(EECR & EEPE);
+  EEAR = 3;
+  EEDR = bytes[0];
+  EECR = B00000100;
+  EECR = (1 << EEPE);
+  while(EECR & EEPE);
+  EEAR = 4;
+  EEDR = bytes[1];
+  EECR = B00000100;
+  EECR = (1 << EEPE); 
+  while(EECR & EEPE);
+
+  //Write the remaining data's, which are all 1 byte each
+  EEAR = 5;
+  EEDR = Limits.temp_air_MIN;
+  EECR = B00000100;
+  EECR = (1 << EEPE);
+  while(EECR & EEPE);
+
+  EEAR = 5;
+  EEDR = Limits.temp_water_MIN;
+  EECR = B00000100;
+  EECR = (1 << EEPE);
+  while(EECR & EEPE);
+  
+  EEAR = 5;
+  EEDR = Limits.water_level_LOW;
+  EECR = B00000100;
+  EECR = (1 << EEPE);
+  while(EECR & EEPE);
+
+  EEAR = 5;
+  EEDR = Limits.water_bucket_height;
+  EECR = B00000100;
+  EECR = (1 << EEPE);
+  while(EECR & EEPE);
+
+  
+  sei();
 }
 
 void adjust_limits(uint8_t limit_id) {
