@@ -873,7 +873,7 @@ void read_from_eeprom(){
   EECR |= (1 << EERE);
   bytes[1] = EEDR;
 
-  Limits.moisture_top_LOW = bytes[0] + bytes[1]; //Add the two bytes to create the whole value
+  Limits.moisture_top_LOW = (bytes[0] << 8) | bytes[1]; //Add the two bytes to create the whole value
 
   while(EECR & (1 << EEPE));
   EEAR = 3;
@@ -885,7 +885,7 @@ void read_from_eeprom(){
   EECR |= (1 << EERE);
   bytes[1] = EEDR;
 
-  Limits.moisture_top_HIGH = bytes[0] + bytes[1];
+  Limits.moisture_top_HIGH = (bytes[0] << 8) | bytes[1];
 
   while(EECR & (1 << EEPE));
   EEAR = 5;
@@ -897,7 +897,7 @@ void read_from_eeprom(){
   EECR |= (1 << EERE);
   bytes[1] = EEDR;
 
-  Limits.moisture_bottom_HIGH = bytes[0] + bytes[1];
+  Limits.moisture_bottom_HIGH = (bytes[0] << 8) | bytes[1];
 
   //Then for the one byte datas
   while(EECR & (1 << EEPE));
