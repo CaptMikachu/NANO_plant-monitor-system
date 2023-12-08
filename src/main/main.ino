@@ -454,6 +454,30 @@ void hymn() {
 
 void erika() {
   Serial.println("ERIKA");
+  int melody[] = {
+  NOTE_G4, NOTE_GS4, NOTE_AS4, NOTE_DS2, NOTE_DS2, NOTE_DS2, NOTE_DS2,
+  NOTE_DS2, NOTE_DS2, NOTE_C5, NOTE_AS4, NOTE_GS4
+  };
+  // note durations: 4 = quarter note, 8 = eighth note, etc.:
+  int noteDurations[] = {
+  16, 16, 16, 24, 64, 16, 24, 64, 8, 11, 44, 32
+  };
+  // iterate over the notes of the melody:
+  for (int thisNote = 0; thisNote < 13; thisNote++  ) {
+
+  // to calculate the note duration, take one second
+  // divided by the note type.
+  //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+  int noteDuration = 4600/noteDurations[thisNote];
+  tone(6, melody[thisNote],noteDuration);
+
+  // to distinguish the notes, set a minimum time between them.
+  // the note's duration   30% seems to work well:
+  int pauseBetweenNotes = noteDuration * 1.30;
+  delay(pauseBetweenNotes);
+  // stop the tone playing:
+  noTone(6);
+  }
 }
 
 void warning() {
