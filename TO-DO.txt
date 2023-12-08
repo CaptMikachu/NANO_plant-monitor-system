@@ -1,4 +1,4 @@
-1. One more block with registers (EEPROM, save limits values)
+1. One more block with registers (EEPROM, save limits values) //Saving to EEPROM done, next do reading from there
 2. ----DONE---- Implement settings to adjust Limits-struct with buttons
 3. ----DONE---- Implement 2 more buttons for settings
 4. Add song (one more)
