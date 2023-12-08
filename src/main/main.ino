@@ -150,6 +150,15 @@ void setup() {
   wdt_enable(WDTO_4S); //Enable watchdog using 4 second time
   Serial.begin(9600);
   lcd.begin(16, 2);
+  if(MCUSR & BORF){ //If brown-out (sudden power loss) happened, 
+    Serial.println("Brown-out reset happened!");
+    lcd.setCursor(0, 0);
+    lcd.print("Brown-out!");
+    delay(1000);
+    lcd.clear();
+    lcd.print("Loading last values");
+    read_from_eeprom();
+  }
 
   Timer1.initialize(1000000); // call every 1 second(s)
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
@@ -530,85 +539,7 @@ void settings() {
   wdt_enable(WDTO_4S);
 }
 
-void save_to_eeprom(){
-  cli();
-  EEAR = 0; //Make sure the EEPROM address register is all 0
-  uint8_t bytes[2]; //Array to hold the value of variables bigger than 1 byte
 
-  //First we have to split the uint16_t datas to separate bytes
-  bytes[0] = (Limits.moisture_top_LOW >> 8) & 0xFF; //Shift the first eight bits starting from left and then AND them with 0xFF which equals to 255
-  bytes[1] = (Limits.moisture_top_LOW >> 0) & 0xFF; //Then get the last eight bits starting from left and do the same
-
-  while(EECR & EEPE); //Wait until the EEPE bit is 0, indicates that the last write operation is done
-  EEAR = 1; //Write to the first EEPROM address
-  EEDR = bytes[0]; //Write the first eight bits from the value, starting from left, to EEPROM
-  EECR = B00000100; //EEPROM master write enable, clears automatically after 4 cycles
-  EECR = (1 << EEPE); //Write 1 to EEPE to start writing
-  while(EECR & EEPE);
-  EEAR = 2; //Write to the first EEPROM address
-  EEDR = bytes[1]; //Write the first eight bits from the value, starting from left, to EEPROM
-  EECR = B00000100; //EEPROM master write enable, clears automatically after 4 cycles, also bits EEPM1 EEPM0 are 0 so erase and write with same opeartion
-  EECR = (1 << EEPE); //Write 1 to EEPE to start writing
-  while(EECR & EEPE);
-
-  bytes[0] = (Limits.moisture_top_HIGH >> 8) & 0xFF;
-  bytes[1] = (Limits.moisture_top_HIGH >> 0) & 0xFF;
-
-  while(EECR & EEPE);
-  EEAR = 3;
-  EEDR = bytes[0];
-  EECR = B00000100;
-  EECR = (1 << EEPE);
-  while(EECR & EEPE);
-  EEAR = 4;
-  EEDR = bytes[1];
-  EECR = B00000100;
-  EECR = (1 << EEPE); 
-  while(EECR & EEPE);
-
-  bytes[0] = (Limits.moisture_bottom_HIGH >> 8) & 0xFF;
-  bytes[1] = (Limits.moisture_bottom_HIGH >> 0) & 0xFF;
-
-  while(EECR & EEPE);
-  EEAR = 3;
-  EEDR = bytes[0];
-  EECR = B00000100;
-  EECR = (1 << EEPE);
-  while(EECR & EEPE);
-  EEAR = 4;
-  EEDR = bytes[1];
-  EECR = B00000100;
-  EECR = (1 << EEPE); 
-  while(EECR & EEPE);
-
-  //Write the remaining data's, which are all 1 byte each
-  EEAR = 5;
-  EEDR = Limits.temp_air_MIN;
-  EECR = B00000100;
-  EECR = (1 << EEPE);
-  while(EECR & EEPE);
-
-  EEAR = 5;
-  EEDR = Limits.temp_water_MIN;
-  EECR = B00000100;
-  EECR = (1 << EEPE);
-  while(EECR & EEPE);
-  
-  EEAR = 5;
-  EEDR = Limits.water_level_LOW;
-  EECR = B00000100;
-  EECR = (1 << EEPE);
-  while(EECR & EEPE);
-
-  EEAR = 5;
-  EEDR = Limits.water_bucket_height;
-  EECR = B00000100;
-  EECR = (1 << EEPE);
-  while(EECR & EEPE);
-
-  
-  sei();
-}
 
 void adjust_limits(uint8_t limit_id) {
   switch (limit_id) {
@@ -847,6 +778,149 @@ void adjust_water_bucket_height() {
     }
     while (!((PIND & B00100000) && (PIND & B00010000))); // To let button state reset because of the debounce capacitor
   }
+}
+
+void save_to_eeprom(){
+  cli();
+  EEAR = 0; //Make sure the EEPROM address register is all 0
+  uint8_t bytes[2]; //Array to hold the value of variables bigger than 1 byte
+
+  //First we have to split the uint16_t datas to separate bytes
+  bytes[0] = (Limits.moisture_top_LOW >> 8) & 0xFF; //Shift the first eight bits starting from left and then AND them with 0xFF which equals to 255
+  bytes[1] = (Limits.moisture_top_LOW >> 0) & 0xFF; //Then get the last eight bits starting from left and do the same
+
+  while(EECR & (1 << EEPE)); //Wait until the EEPE bit is 0, indicates that the last write operation is done
+  EEAR = 1; //Write to the first EEPROM address
+  EEDR = bytes[0]; //Write the first eight bits from the value, starting from left, to EEPROM
+  EECR |= (1 << EEMPE); //EEPROM master write enable, clears automatically after 4 cycles, also bits EEPM1 EEPM0 are 0 so erase and write with same opeartion
+  EECR |= (1 << EEPE); //Write 1 to EEPE to start writing
+  while(EECR & (1 << EEPE));
+  EEAR = 2;
+  EEDR = bytes[1];
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE); 
+  while(EECR & (1 << EEPE));
+
+  bytes[0] = (Limits.moisture_top_HIGH >> 8) & 0xFF;
+  bytes[1] = (Limits.moisture_top_HIGH >> 0) & 0xFF;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 3;
+  EEDR = bytes[0];
+  EECR |= (1 << EEMPE);
+  EECR = (1 << EEPE);
+  while(EECR & (1 << EEPE));
+  EEAR = 4;
+  EEDR = bytes[1];
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE); 
+  while(EECR & (1 << EEPE));
+
+  bytes[0] = (Limits.moisture_bottom_HIGH >> 8) & 0xFF;
+  bytes[1] = (Limits.moisture_bottom_HIGH >> 0) & 0xFF;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 5;
+  EEDR = bytes[0];
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE);
+  while(EECR & (1 << EEPE));
+  EEAR = 6;
+  EEDR = bytes[1];
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE); 
+  while(EECR & (1 << EEPE));
+
+  //Write the remaining data's, which are all 1 byte each
+  EEAR = 7;
+  EEDR = Limits.temp_air_MIN;
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE);
+  while(EECR & (1 << EEPE));
+
+  EEAR = 8;
+  EEDR = Limits.temp_water_MIN;
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE);
+  while(EECR & (1 << EEPE));
+  
+  EEAR = 9;
+  EEDR = Limits.water_level_LOW;
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE);
+  while(EECR & (1 << EEPE));
+
+  EEAR = 10;
+  EEDR = Limits.water_bucket_height;
+  EECR |= (1 << EEMPE);
+  EECR |= (1 << EEPE);
+  while(EECR & (1 << EEPE));
+
+  
+  sei();
+}
+
+void read_from_eeprom(){
+  cli();
+  uint8_t bytes[2]; //Array to store the uint16_t values byte by byte read from eeprom
+  while(EECR & (1 << EEPE)); //Wait if there's a write operation happening in eeprom
+  EEAR = 1; //eeprom address
+  EECR |= (1 << EERE); //Enable read from eeprom
+  bytes[0] = EEDR; //The first eight bits for the complete data
+
+  while(EECR & (1 << EEPE));
+  EEAR = 2;
+  EECR |= (1 << EERE);
+  bytes[1] = EEDR;
+
+  Limits.moisture_top_LOW = bytes[0] + bytes[1]; //Add the two bytes to create the whole value
+
+  while(EECR & (1 << EEPE));
+  EEAR = 3;
+  EECR |= (1 << EERE);
+  bytes[0] = EEDR;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 4;
+  EECR |= (1 << EERE);
+  bytes[1] = EEDR;
+
+  Limits.moisture_top_HIGH = bytes[0] + bytes[1];
+
+  while(EECR & (1 << EEPE));
+  EEAR = 5;
+  EECR |= (1 << EERE);
+  bytes[0] = EEDR;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 6;
+  EECR |= (1 << EERE);
+  bytes[1] = EEDR;
+
+  Limits.moisture_bottom_HIGH = bytes[0] + bytes[1];
+
+  //Then for the one byte datas
+  while(EECR & (1 << EEPE));
+  EEAR = 7;
+  EECR |= (1 << EERE);
+  Limits.temp_air_MIN = EEDR;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 8;
+  EECR |= (1 << EERE);
+  Limits.temp_water_MIN = EEDR;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 9;
+  EECR |= (1 << EERE);
+  Limits.water_level_LOW = EEDR;
+
+  while(EECR & (1 << EEPE));
+  EEAR = 10;
+  EECR |= (1 << EERE);    
+  Limits.water_bucket_height = EEDR;
+
+  sei();
 }
 
 void timerOneISR() {
