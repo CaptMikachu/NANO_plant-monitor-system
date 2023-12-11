@@ -150,15 +150,7 @@ void setup() {
   wdt_enable(WDTO_4S); //Enable watchdog using 4 second time
   Serial.begin(9600);
   lcd.begin(16, 2);
-  if(MCUSR & BORF){ //If brown-out (sudden power loss) happened, 
-    Serial.println("Brown-out reset happened!");
-    lcd.setCursor(0, 0);
-    lcd.print("Brown-out!");
-    delay(1000);
-    lcd.clear();
-    lcd.print("Loading last values");
-    read_from_eeprom();
-  }
+
 
   Timer1.initialize(1000000); // call every 1 second(s)
   Timer1.attachInterrupt(timerOneISR); // TimerOne interrupt callback
@@ -169,7 +161,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(3), button_two_ISR, FALLING); // Exit button
   wdt_reset();
   Serial.println("setup complete");
-  //greeting();
+  greeting();
 }
 
 void loop() {
@@ -226,6 +218,29 @@ void greeting() {
     lcd.clear();
   }
   delay(500);
+
+  //Ask user if they want to use default settings or saved settings after reset
+  wdt_disable();
+  lcd.setCursor(0, 0);
+  lcd.print("Default settings");
+  lcd.setCursor(0, 1);
+  lcd.print("1.Yes   2.No");
+  while(!button_one_flag && !button_two_flag); //Wait for user input
+  if(button_two_flag){
+    read_from_eeprom();
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Settings loaded");
+    delay(1000);
+  }else{
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Default settings");
+    delay(1000);
+  }
+  button_one_flag = 0;
+  button_two_flag = 0;
+  wdt_enable(WDTO_4S);
 }
 
 void main_menu() {
