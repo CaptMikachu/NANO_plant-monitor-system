@@ -121,7 +121,7 @@ struct Limits {
   uint8_t temp_air_MIN = 18;
   uint8_t temp_water_MIN = 18;
   uint8_t water_level_LOW = 10;
-  uint8_t water_bucket_height = 15;
+  uint8_t water_bucket_height = 30;
 } Limits;
 
 struct Data { // digital values from each sensor
@@ -244,46 +244,75 @@ void greeting() {
 }
 
 void main_menu() {
-  String keys = "", values = "";
+  String keys = "", values = "", str_1 = "", str_2 = "", str_3 = "";
   switch (view_mode) {
     case 1:
       keys = "TEMP MOIST LIGHT";
-      values =
-      String(Converted_current_reading.temp_air) + " " +
-      String(Converted_current_reading.soil_top) + " " +
-      String(Converted_current_reading.light);
+      str_1 = String(Converted_current_reading.temp_air);
+      str_2 = String(Converted_current_reading.soil_top);
+      str_3 = String(Converted_current_reading.light);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(keys);
+      lcd.setCursor(0, 1);
+      lcd.print(str_1);
+      lcd.setCursor(5, 1);
+      lcd.print(str_2);
+      lcd.setCursor(11, 1);
+      lcd.print(str_3);
       break;
     case 2:
       keys = "MOIST-t  MOIST-b";
-      values =
-      String(Converted_current_reading.soil_top) + " " +
-      String(Converted_current_reading.soil_bottom);
+      str_1 = String(Converted_current_reading.soil_top);
+      str_2 = String(Converted_current_reading.soil_bottom);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(keys);
+      lcd.setCursor(0, 1);
+      lcd.print(str_1);
+      lcd.setCursor(9, 1);
+      lcd.print(str_2);
       break;
     case 3:
       keys = "TEMP-air  TEMP-w";
-      values =
-      String(Converted_current_reading.temp_air) + " " +
-      String(Converted_current_reading.temp_water);
+      str_1 = String(Converted_current_reading.temp_air);
+      str_2 = String(Converted_current_reading.temp_water);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(keys);
+      lcd.setCursor(0, 1);
+      lcd.print(str_1);
+      lcd.setCursor(9, 1);
+      lcd.print(str_2);
       break;
     case 4:
       keys = "TEMP-w   WATER-l";
-      values =
-      String(Converted_current_reading.temp_water) + " " +
-      String(Converted_current_reading.water_level);
+      str_1 = String(Converted_current_reading.temp_water);
+      str_2 = String(Converted_current_reading.water_level);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(keys);
+      lcd.setCursor(0, 1);
+      lcd.print(str_1);
+      lcd.setCursor(9, 1);
+      lcd.print(str_2);
       break;
     default:
       keys = "TEMP MOIST LIGHT";
-      values =
-      String(Converted_current_reading.temp_air) + " " +
-      String(Converted_current_reading.soil_top) + " " +
-      String(Converted_current_reading.light);
+      str_1 = String(Converted_current_reading.temp_air);
+      str_2 = String(Converted_current_reading.soil_top);
+      str_3 = String(Converted_current_reading.light);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print(keys);
+      lcd.setCursor(0, 1);
+      lcd.print(str_1);
+      lcd.setCursor(5, 1);
+      lcd.print(str_2);
+      lcd.setCursor(11, 1);
+      lcd.print(str_3);
       break;
   }
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(keys);
-  lcd.setCursor(0, 1);
-  lcd.print(values);
 }
 
 void printout() {

@@ -3,7 +3,7 @@
 3. ----DONE---- Implement 2 more buttons for settings
 4. ----DONE---- Add song (one more)
 5. ----DONE---- Build prototype (Connect sensors and take pics of the beauty)
-6. Main Menu formatting, adjust bottom row to match top row
+6. ----DONE---- Main Menu formatting, adjust bottom row to match top row
 7. ----DONE---- if (millis() % 10000 == 0) {
       limits_check();
     }
@@ -17,6 +17,7 @@ UPDATED
 5.12.2023 (Created TO-DO list) - Mika
 7.12.2023 (Created TO-DO list) - Mika
 8.12.2023 (Created TO-DO list) - Mika
+11.12.2023 (Created TO-DO list) - Mika
 
 
 Buttons
