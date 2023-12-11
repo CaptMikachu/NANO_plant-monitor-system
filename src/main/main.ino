@@ -435,20 +435,20 @@ void limits_check() {
 
 void tunes(uint8_t tune_id) {
   switch (tune_id) {
-    case 1: // LOW WATER LEVEL (cccp)
-      hymn();
+    case 1: // BUCKET WATER LEVEL LOW
+      warning_1();
       break;
     case 2: // LOW AIR TEMPERATURE
-      erika();
+      warning_2();
       break;
     case 3: // LOW WATER TEMPERATURE
-      warning();
+      warning_3();
       break;
   }
 }
 
-void hymn() {
-  Serial.println("CCCP");
+void warning_1() {
+  Serial.println("BUCKET WATER LEVEL LOW");
   // notes in the melody
   int melody[] = {
   NOTE_G4, NOTE_C5, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_E4, NOTE_E4,
@@ -459,14 +459,12 @@ void hymn() {
   2, 2, 4, 4, 2, 4, 4, 2, 4, 4, 1
   };
   // iterate over the notes of the melody:
-  for (int thisNote = 0; thisNote < 13; thisNote++  ) {
-
+  for (int thisNote = 0; thisNote < 11; thisNote++  ) {
   // to calculate the note duration, take one second
   // divided by the note type.
   //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
   int noteDuration = 800/noteDurations[thisNote];
   tone(6, melody[thisNote],noteDuration);
-
   // to distinguish the notes, set a minimum time between them.
   // the note's duration   30% seems to work well:
   int pauseBetweenNotes = noteDuration * 1.30;
@@ -476,25 +474,23 @@ void hymn() {
   }
 }
 
-void erika() {
-  Serial.println("ERIKA");
+void warning_2() {
+  Serial.println("LOW AIR TEMPERATURE");
   int melody[] = {
-  NOTE_G4, NOTE_GS4, NOTE_AS4, NOTE_DS2, NOTE_DS2, NOTE_DS2, NOTE_DS2,
-  NOTE_DS2, NOTE_DS2, NOTE_C5, NOTE_AS4, NOTE_GS4
+  NOTE_G5, NOTE_GS5, NOTE_AS5, NOTE_DS3, NOTE_DS3, NOTE_DS3, NOTE_DS3,
+  NOTE_DS3, NOTE_DS3, NOTE_C6, NOTE_AS5, NOTE_GS5
   };
   // note durations: 4 = quarter note, 8 = eighth note, etc.:
   int noteDurations[] = {
   16, 16, 16, 24, 64, 16, 24, 64, 8, 11, 44, 32
   };
   // iterate over the notes of the melody:
-  for (int thisNote = 0; thisNote < 13; thisNote++  ) {
-
+  for (int thisNote = 0; thisNote < 12; thisNote++  ) {
   // to calculate the note duration, take one second
   // divided by the note type.
   //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
   int noteDuration = 4600/noteDurations[thisNote];
   tone(6, melody[thisNote],noteDuration);
-
   // to distinguish the notes, set a minimum time between them.
   // the note's duration   30% seems to work well:
   int pauseBetweenNotes = noteDuration * 1.30;
@@ -504,8 +500,32 @@ void erika() {
   }
 }
 
-void warning() {
-  Serial.println("WARNING");
+void warning_3() {
+  Serial.println("LOW WATER TEMPERATURE");
+  // notes in the melody
+  int melody[] = {
+  NOTE_E5, NOTE_G5, NOTE_C6, NOTE_E6, NOTE_E6, NOTE_G5, NOTE_D6,
+  NOTE_F6, NOTE_E6, NOTE_C6, NOTE_C5, NOTE_E5, NOTE_G5, NOTE_C6,
+  NOTE_C6, NOTE_D5, NOTE_B5, NOTE_D6, NOTE_C6
+  };
+  // note durations: 4 = quarter note, 8 = eighth note, etc.:
+  int noteDurations[] = {
+  8, 8, 8, 4, 4, 8, 4, 4, 4, 4, 8, 8, 8, 4, 4, 8, 4, 4, 2
+  };
+  // iterate over the notes of the melody:
+  for (int thisNote = 0; thisNote < 19; thisNote++  ) {
+  // to calculate the note duration, take one second
+  // divided by the note type.
+  //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+  int noteDuration = 1000/noteDurations[thisNote];
+  tone(6, melody[thisNote],noteDuration);
+  // to distinguish the notes, set a minimum time between them.
+  // the note's duration   30% seems to work well:
+  int pauseBetweenNotes = noteDuration * 1.30;
+  delay(pauseBetweenNotes);
+  // stop the tone playing:
+  noTone(8);
+  }
 }
 
 
