@@ -318,7 +318,8 @@ void ADC_read(){
      and store to data struct */
   uint8_t pins[] = {0, 1, 2, 3, 6, 7};
   for(int i = 0; i < (sizeof(pins)/sizeof(pins[0])); i++){
-    ADMUX = (ADMUX & B11111000) | (pins[i] & B00000111);
+    ADMUX = (ADMUX & B11111000) | (pins[i] & B00000111); //Enable the right admux channel
+
     ADCSRA |= (1 << ADSC); //Start conversion
     while(ADCSRA & B01000000); //Wait for conversion to end
     switch(pins[i]){
@@ -379,7 +380,6 @@ void convert_data(){ //Convert the current reading data to corresponding units
   Converted_current_reading.temp_air = round(air_temp);
   
   //Water temperature conversion (sensor is a thermistor)
-
   K = 1.0 / (T0 + beta*(log(1023.0 / (float)Current_reading_digi.temp_water_d - 1.00)));
   water_temp = K - 273.15; // Convert Kelvins to Celsius
   Converted_current_reading.temp_water = floor(water_temp);
@@ -820,10 +820,11 @@ void adjust_water_bucket_height() {
 }
 
 void save_to_eeprom(){
-  cli();
+  cli(); //Disable interrupts to make sure eeprom writing is not corrupted
   EEAR = 0; //Make sure the EEPROM address register is all 0
   uint8_t bytes[2]; //Array to hold the value of variables bigger than 1 byte
 
+  //Top moisture sensor low threshold
   //First we have to split the uint16_t datas to separate bytes
   bytes[0] = (Limits.moisture_top_LOW >> 8) & 0xFF; //Shift the first eight bits starting from left and then AND them with 0xFF which equals to 255
   bytes[1] = (Limits.moisture_top_LOW >> 0) & 0xFF; //Then get the last eight bits starting from left and do the same
@@ -840,6 +841,7 @@ void save_to_eeprom(){
   EECR |= (1 << EEPE); 
   while(EECR & (1 << EEPE));
 
+  //Top moisture sensor high threshold
   bytes[0] = (Limits.moisture_top_HIGH >> 8) & 0xFF;
   bytes[1] = (Limits.moisture_top_HIGH >> 0) & 0xFF;
 
@@ -855,6 +857,7 @@ void save_to_eeprom(){
   EECR |= (1 << EEPE); 
   while(EECR & (1 << EEPE));
 
+  //Bottom moisture sensor high threshold
   bytes[0] = (Limits.moisture_bottom_HIGH >> 8) & 0xFF;
   bytes[1] = (Limits.moisture_bottom_HIGH >> 0) & 0xFF;
 
@@ -870,36 +873,42 @@ void save_to_eeprom(){
   EECR |= (1 << EEPE); 
   while(EECR & (1 << EEPE));
 
-  //Write the remaining data's, which are all 1 byte each
+  //Write the remaining data's, which are all 1 byte each so no bitwise manipulation needed here since eeprom saves 1 byte at a time
+
+  //Air temperature minimum threshold
   EEAR = 7;
   EEDR = Limits.temp_air_MIN;
   EECR |= (1 << EEMPE);
   EECR |= (1 << EEPE);
   while(EECR & (1 << EEPE));
 
+
+  //Water temperature minimum threshold
   EEAR = 8;
   EEDR = Limits.temp_water_MIN;
   EECR |= (1 << EEMPE);
   EECR |= (1 << EEPE);
   while(EECR & (1 << EEPE));
   
+  //Water level minimum threshold
   EEAR = 9;
   EEDR = Limits.water_level_LOW;
   EECR |= (1 << EEMPE);
   EECR |= (1 << EEPE);
   while(EECR & (1 << EEPE));
 
+  //The height of the water container
   EEAR = 10;
   EEDR = Limits.water_bucket_height;
   EECR |= (1 << EEMPE);
   EECR |= (1 << EEPE);
   while(EECR & (1 << EEPE));
 
-  
-  sei();
+  sei(); //Enable interrupts after saving is done
 }
 
 void read_from_eeprom(){
+  
   cli();
   uint8_t bytes[2]; //Array to store the uint16_t values byte by byte read from eeprom
   while(EECR & (1 << EEPE)); //Wait if there's a write operation happening in eeprom
